@@ -44,14 +44,14 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
     }
 
     private void connectCommand() {
-        status.handle(Priority.INFO, "Connecting to command port: {}", commandUrl);
+        status.handle(Priority.INFO, "Connecting to command port: " + commandUrl);
         commandSocket = context.createSocket(ZMQ.REQ);
         commandSocket.connect(commandUrl);
         commandSocket.setLinger(0);
     }
 
     private void connectEvent() {
-        status.handle(Priority.INFO, "Connecting to event port: {}", eventUrl);
+        status.handle(Priority.INFO, "Connecting to event port: " + eventUrl);
         eventSocket = context.createSocket(ZMQ.SUB);
         eventSocket.connect(eventUrl);
         eventSocket.subscribe(new byte[0]);
@@ -72,12 +72,16 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
             // INTERRUPTED
             return null;
         String reply = null;
-        if (items[0].isReadable()) {
-            reply = commandSocket.recvStr();
-            status.handle(Priority.INFO, "ZMQ received: " + reply);
+        
+        for (PollItem item: items) {
+            if (item.isReadable()) {
+                reply = commandSocket.recvStr();
+                status.handle(Priority.INFO, "ZMQ received: " + reply);
+                break;
+            }
         }
         if (reply == null) {
-            status.handle(Priority.INFO, "Empty message received from command: {}", command);
+            status.handle(Priority.INFO, "Empty message received from command: " + command);
             connectCommand();
         }
 

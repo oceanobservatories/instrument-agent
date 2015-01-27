@@ -14,7 +14,7 @@ public class DriverEventHandler implements Observer {
     protected InstrumentAgent agent;
     protected String sensor;
 
-    protected IUFStatusHandler status = UFStatus.getHandler(Ingest.class);
+    protected IUFStatusHandler status = UFStatus.getHandler(DriverEventHandler.class);
 
     public DriverEventHandler(InstrumentAgent agent, SampleAccumulator accumulator, String sensor) {
         this.agent = agent;

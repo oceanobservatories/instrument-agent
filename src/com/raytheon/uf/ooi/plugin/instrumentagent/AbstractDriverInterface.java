@@ -12,7 +12,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  */
 
 public abstract class AbstractDriverInterface extends Observable {
-    protected IUFStatusHandler status = UFStatus.getHandler(Ingest.class);
+    protected IUFStatusHandler status = UFStatus.getHandler(AbstractDriverInterface.class);
     protected int DEFAULT_TIMEOUT = 60;
 
     protected abstract String _sendCommand(String command);
