@@ -76,7 +76,7 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         for (PollItem item: items) {
             if (item.isReadable()) {
                 reply = commandSocket.recvStr();
-                status.handle(Priority.INFO, "ZMQ received: " + reply);
+                status.handle(Priority.DEBUG, "ZMQ received: " + reply);
                 break;
             }
         }
@@ -97,7 +97,7 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
                 String reply = null;
                 if (items[0].isReadable()) {
                     reply = eventSocket.recvStr();
-                    status.handle(Priority.INFO, "ZMQ received: " + reply);
+                    status.handle(Priority.DEBUG, "ZMQ received: " + reply);
                 }
                 if (reply != null) {
                     try {

@@ -1,41 +1,54 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.camel.EndpointInject;
+import org.apache.camel.Exchange;
 import org.apache.camel.ProducerTemplate;
 
 import com.raytheon.uf.common.dataplugin.sensorreading.SensorReadingRecord;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.ooi.cassandra.DataParticleJson;
 import com.raytheon.uf.edex.ooi.decoder.dataset.AbstractParticleDecoder;
 
-public class SampleAccumulator extends AbstractParticleDecoder implements Runnable {
+public class SampleAccumulator implements Runnable {
     private IUFStatusHandler statusHandler = UFStatus.getHandler(this.getClass());
-    private List<SensorReadingRecord> sampleList = new LinkedList<SensorReadingRecord>();
+    private Map<String, List<DataParticleJson>> particleMap = new HashMap<>();
     private long PUBLISH_INTERVAL = 5000;
 
-    @EndpointInject(uri = "direct-vm:persistIndexAlert")
+    @EndpointInject(uri = "vm:generate")
     protected ProducerTemplate producer;
 
     public synchronized void process(Map<String, Object> particle, String sensor) throws Exception {
-/*        SensorReadingRecord record = parseMap("streaming", sensor, particle);
-        sampleList.add(record);*/
+        DataParticleJson p = new DataParticleJson(particle);
+        p.setSensor(sensor);
+        p.setMethod("streamed");
+        if (!particleMap.containsKey(p.getStream_name())) {
+            List<DataParticleJson> l = new LinkedList<>();
+            particleMap.put(p.getStream_name(), l);
+        }
+        particleMap.get(p.getStream_name()).add(p);
     }
 
     public void publish() {
-        Object records[];
-        synchronized (sampleList) {
-            records = sampleList.toArray();
-            sampleList.clear();
+        long now = System.currentTimeMillis();
+        Map<String, List<DataParticleJson>> records;
+        synchronized (particleMap) {
+            records = particleMap;
+            particleMap = new HashMap<>();
         }
 
-        if (records.length > 0) {
-            statusHandler.handle(Priority.INFO, "Going to publish " + records.length + " particles");
-            producer.sendBody(records);
+        if (!records.isEmpty()) {
+            statusHandler.handle(Priority.INFO, "Going to publish particles");
+            Map<String, Object> headers = new HashMap<>();
+            headers.put("enqueueTime", now);
+            headers.put("dequeueTime", now);
+            producer.sendBodyAndHeaders(records, headers);
         }
     }
 
