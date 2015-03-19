@@ -17,3 +17,4 @@ Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  org.zeromq;bundle-version="1.0.0",
  com.raytheon.uf.common.localization,
  com.raytheon.uf.edex.ooi.cors;bundle-version="1.0.0"
+Import-Package: com.raytheon.uf.edex.ooi.cassandra

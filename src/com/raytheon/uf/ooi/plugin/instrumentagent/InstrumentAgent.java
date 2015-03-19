@@ -18,7 +18,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 
 public class InstrumentAgent {
-    protected IUFStatusHandler status = UFStatus.getHandler(Ingest.class);
+    protected IUFStatusHandler status = UFStatus.getHandler(InstrumentAgent.class);
 
     private String sensor;
     private String miPath = "ooi/instruments/mi-instrument";
@@ -112,6 +112,9 @@ public class InstrumentAgent {
     }
 
     protected String handleResponse(String reply, int timeout) {
+        if (reply == null) {
+            return "No response from driver";
+        }
         try {
             Map<String, Object> driverReply = JsonHelper.toMap(reply);
             String replyType = (String) driverReply.get("type");
