@@ -13,7 +13,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 
 public class ZmqDriverInterface extends AbstractDriverInterface {
     private ZContext context;
-    private ZMQ.Socket commandSocket;
     private ZMQ.Socket eventSocket;
     private boolean keepRunning = true;
     private String eventUrl;
@@ -30,7 +29,6 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         context = new ZContext();
         context.setLinger(0);
 
-        connectCommand();
         connectEvent();
 
         Thread t = new Thread() {
@@ -41,13 +39,6 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
 
         t.setName("Event Loop " + eventUrl);
         t.start();
-    }
-
-    private void connectCommand() {
-        status.handle(Priority.INFO, "Connecting to command port: " + commandUrl);
-        commandSocket = context.createSocket(ZMQ.REQ);
-        commandSocket.connect(commandUrl);
-        commandSocket.setLinger(0);
     }
 
     private void connectEvent() {
@@ -62,6 +53,11 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
     protected synchronized String _sendCommand(String command) {
         status.handle(Priority.INFO, "Sending command: " + command);
         // Send the command
+        ZMQ.Socket commandSocket;
+        commandSocket = context.createSocket(ZMQ.REQ);
+        commandSocket.connect(commandUrl);
+        commandSocket.setLinger(0);
+        
         commandSocket.send(command);
 
         // Get the response
@@ -82,9 +78,9 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         }
         if (reply == null) {
             status.handle(Priority.INFO, "Empty message received from command: " + command);
-            connectCommand();
         }
-
+        
+        commandSocket.close();
         return reply;
     }
 
