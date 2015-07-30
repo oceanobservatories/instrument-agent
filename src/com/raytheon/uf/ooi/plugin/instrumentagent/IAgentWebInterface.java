@@ -47,8 +47,7 @@ public interface IAgentWebInterface {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response createAgent(@PathParam("id") String id,
             // TODO - these should be retrieved from a datastore
-            @FormParam("module") String module, @FormParam("class") String klass, @FormParam("host") String host,
-            @FormParam("commandPort") int commandPort, @FormParam("eventPort") int eventPort);
+            @FormParam("host") String host, @FormParam("commandPort") int commandPort, @FormParam("eventPort") int eventPort);
 
     @POST
     @Path("api/{id}")

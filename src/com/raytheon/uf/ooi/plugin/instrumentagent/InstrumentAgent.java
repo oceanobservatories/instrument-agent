@@ -1,18 +1,9 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.camel.ProducerTemplate;
-
-import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationContext;
-import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -21,24 +12,18 @@ public class InstrumentAgent {
     protected IUFStatusHandler status = UFStatus.getHandler(InstrumentAgent.class);
 
     private String sensor;
-    private String miPath = "ooi/instruments/mi-instrument";
-    private String driverModule;
-    private String driverKlass;
     private String driverHost;
     private int commandPort;
     private int eventPort;
-    private Process process;
     private AbstractDriverInterface driverInterface;
     private DriverEventHandler eventListener;
     protected Map<Integer, String> transactionMap = new ConcurrentHashMap<>();
     private final Object cachedStateMonitor = new Object();
     private String cachedState;
 
-    public InstrumentAgent(String sensor, String driverModule, String driverKlass, String driverHost, int commandPort,
+    public InstrumentAgent(String sensor, String driverHost, int commandPort,
             int eventPort, SampleAccumulator accumulator) throws Exception {
         this.sensor = sensor;
-        this.driverModule = driverModule;
-        this.driverKlass = driverKlass;
         this.driverHost = driverHost;
         this.commandPort = commandPort;
         this.eventPort = eventPort;
@@ -49,8 +34,6 @@ public class InstrumentAgent {
     public InstrumentAgent(String id, String jsonDefinition, SampleAccumulator accumulator) throws Exception {
         Map<String, Object> map = JsonHelper.toMap(jsonDefinition);
         sensor = id;
-        driverModule = (String) map.get("module");
-        driverKlass = (String) map.get("klass");
         driverHost = (String) map.get("host");
         commandPort = (int) map.get("commandPort");
         eventPort = (int) map.get("eventPort");
@@ -59,15 +42,11 @@ public class InstrumentAgent {
     }
 
     public void startup() throws Exception {
-        // TODO, check for running driver
-        runDriver();
         connectDriver();
         getOverallState();
     }
 
     public void connectDriver() throws Exception {
-        if (process == null)
-            runDriver();
         if (driverInterface != null)
             driverInterface.shutdown();
         driverInterface = new ZmqDriverInterface(driverHost, commandPort, eventPort);
@@ -77,9 +56,8 @@ public class InstrumentAgent {
     }
 
     public void killDriver() {
-        status.handle(Priority.INFO, "Killing driver process: " + sensor);
-        if (process != null)
-            process.destroy();
+        status.handle(Priority.INFO, "Stopping driver interface: " + sensor);
+
         if (driverInterface != null)
             driverInterface.shutdown();
 
@@ -91,24 +69,6 @@ public class InstrumentAgent {
             // ignore
         }
 
-    }
-
-    public void runDriver() throws Exception {
-        IPathManager pathManager = PathManagerFactory.getPathManager();
-        LocalizationContext context = pathManager.getContext(LocalizationType.EDEX_STATIC, LocalizationLevel.BASE);
-
-        File baseDir = pathManager.getFile(context, miPath);
-        if (!baseDir.exists()) {
-            throw new IllegalArgumentException("Unable to find instrument drivers at " + baseDir);
-        }
-
-        String[] args = { "python", "main.py", driverModule, driverKlass, Integer.toString(commandPort),
-                Integer.toString(eventPort) };
-        status.handle(Priority.INFO, "Launching Instrument Driver with args: " + Arrays.asList(args).toString());
-        ProcessBuilder pb = new ProcessBuilder(args);
-        pb.directory(baseDir);
-        pb.inheritIO();
-        process = pb.start();
     }
 
     protected String handleResponse(String reply, int timeout) {
@@ -269,30 +229,6 @@ public class InstrumentAgent {
 
     public void setEventListener(DriverEventHandler eventListener) {
         this.eventListener = eventListener;
-    }
-
-    public String getMiPath() {
-        return miPath;
-    }
-
-    public void setMiPath(String miPath) {
-        this.miPath = miPath;
-    }
-
-    public String getModule() {
-        return driverModule;
-    }
-
-    public void setModule(String module) {
-        this.driverModule = module;
-    }
-
-    public String getKlass() {
-        return driverKlass;
-    }
-
-    public void setKlass(String klass) {
-        this.driverKlass = klass;
     }
 
     public String getHost() {

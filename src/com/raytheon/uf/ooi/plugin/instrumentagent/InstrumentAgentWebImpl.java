@@ -117,13 +117,13 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
     }
 
     @Override
-    public Response createAgent(String id, String module, String klass, String host, int commandPort, int eventPort) {
+    public Response createAgent(String id, String host, int commandPort, int eventPort) {
         log.handle(Priority.INFO, "createAgent: sensor: " + id);
         if (agentMap.containsKey(id))
             return Response.ok("nope", MediaType.APPLICATION_JSON).build();
 
         try {
-            InstrumentAgent agent = new InstrumentAgent(id, module, klass, host, commandPort, eventPort, accumulator);
+            InstrumentAgent agent = new InstrumentAgent(id, host, commandPort, eventPort, accumulator);
             agentMap.put(id, agent);
             return Response.ok(agent.getOverallState(), MediaType.APPLICATION_JSON).build();
         } catch (Exception e) {
