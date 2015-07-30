@@ -1,9 +1,5 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -11,140 +7,21 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 public class InstrumentAgent {
     protected IUFStatusHandler status = UFStatus.getHandler(InstrumentAgent.class);
 
-    private String sensor;
-    private String driverHost;
-    private int commandPort;
-    private int eventPort;
     private AbstractDriverInterface driverInterface;
-    private DriverEventHandler eventListener;
-    protected Map<Integer, String> transactionMap = new ConcurrentHashMap<>();
-    private final Object cachedStateMonitor = new Object();
-    private String cachedState;
 
-    public InstrumentAgent(String sensor, String driverHost, int commandPort,
-            int eventPort, SampleAccumulator accumulator) throws Exception {
-        this.sensor = sensor;
-        this.driverHost = driverHost;
-        this.commandPort = commandPort;
-        this.eventPort = eventPort;
-        eventListener = new DriverEventHandler(this, accumulator, sensor);
-        startup();
-    }
-
-    public InstrumentAgent(String id, String jsonDefinition, SampleAccumulator accumulator) throws Exception {
-        Map<String, Object> map = JsonHelper.toMap(jsonDefinition);
-        sensor = id;
-        driverHost = (String) map.get("host");
-        commandPort = (int) map.get("commandPort");
-        eventPort = (int) map.get("eventPort");
-        eventListener = new DriverEventHandler(this, accumulator, sensor);
-        startup();
-    }
-
-    public void startup() throws Exception {
-        connectDriver();
-        getOverallState();
-    }
-
-    public void connectDriver() throws Exception {
-        if (driverInterface != null)
-            driverInterface.shutdown();
-        driverInterface = new ZmqDriverInterface(driverHost, commandPort, eventPort);
-        driverInterface.deleteObservers();
-        driverInterface.addObserver(eventListener);
+    public InstrumentAgent(String driverHost, int commandPort) {
+        driverInterface = new ZmqDriverInterface(driverHost, commandPort);
         driverInterface.connect();
-    }
-
-    public void killDriver() {
-        status.handle(Priority.INFO, "Stopping driver interface: " + sensor);
-
-        if (driverInterface != null)
-            driverInterface.shutdown();
-
-        try {
-            // TODO - build a real response...
-            cachedState = "shutdown";
-            cachedStateMonitor.notifyAll();
-        } catch (Exception ignore) {
-            // ignore
-        }
-
-    }
-
-    protected String handleResponse(String reply, int timeout) {
-        if (reply == null) {
-            return "No response from driver";
-        }
-        try {
-            Map<String, Object> driverReply = JsonHelper.toMap(reply);
-            String replyType = (String) driverReply.get("type");
-            switch (replyType) {
-                case Constants.DRIVER_ASYNC_FUTURE:
-                    int transactionId = (int) driverReply.get("value");
-                    return waitForReply(transactionId, timeout);
-                case Constants.DRIVER_SYNC_EVENT:
-                    Object commandMapObject = driverReply.get("cmd");
-                    if (commandMapObject instanceof Map) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> commandMap = (Map<String, Object>) commandMapObject;
-                        String command = (String) commandMap.get("cmd");
-                        if (command.equals("overall_state"))
-                            synchronized (cachedStateMonitor) {
-                                cachedState = reply;
-                                cachedStateMonitor.notifyAll();
-                            }
-                    }
-                case Constants.DRIVER_BUSY:
-                case Constants.DRIVER_EXCEPTION:
-                default:
-                    return reply;
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return "exception";
-        }
-    }
-
-    private String waitForReply(int transactionId, int timeout) {
-        status.handle(Priority.INFO, "waitForReply, transactionId: " + transactionId + " timeout: " + timeout);
-        long expireTime = System.currentTimeMillis() + timeout;
-        while (System.currentTimeMillis() < expireTime) {
-            if (transactionMap.containsKey(transactionId)) {
-                return transactionMap.remove(transactionId);
-            }
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        }
-        // timed out
-        // TODO, make this a proper reply or raise an Exception
-        return "timed out";
     }
 
     protected String sendCommand(String command, String args, String kwargs, int timeout) {
         String reply = driverInterface.sendCommand(command, args, kwargs);
         status.handle(Priority.INFO, "Received reply from InstrumentDriver: " + reply);
-        return handleResponse(reply, timeout);
+        return reply;
     }
 
     protected String getOverallState() {
         return sendCommand("overall_state", "[]", "{}", 0);
-    }
-
-    protected String getOverallStateChanged() {
-        synchronized (cachedStateMonitor) {
-            try {
-                cachedStateMonitor.wait();
-                return cachedState;
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                return null;
-            }
-        }
     }
 
     protected String sendCommand(String command, int timeout) {
@@ -207,14 +84,6 @@ public class InstrumentAgent {
         return sendCommand(Constants.EXECUTE_RESOURCE, args, kwargs, timeout);
     }
 
-    public String getSensor() {
-        return sensor;
-    }
-
-    public void setSensor(String sensor) {
-        this.sensor = sensor;
-    }
-
     public AbstractDriverInterface getDriverInterface() {
         return driverInterface;
     }
@@ -223,35 +92,4 @@ public class InstrumentAgent {
         this.driverInterface = driverInterface;
     }
 
-    public DriverEventHandler getEventListener() {
-        return eventListener;
-    }
-
-    public void setEventListener(DriverEventHandler eventListener) {
-        this.eventListener = eventListener;
-    }
-
-    public String getHost() {
-        return driverHost;
-    }
-
-    public void setHost(String host) {
-        this.driverHost = host;
-    }
-
-    public int getCommandPort() {
-        return commandPort;
-    }
-
-    public void setCommandPort(int commandPort) {
-        this.commandPort = commandPort;
-    }
-
-    public int getEventPort() {
-        return eventPort;
-    }
-
-    public void setEventPort(int eventPort) {
-        this.eventPort = eventPort;
-    }
 }

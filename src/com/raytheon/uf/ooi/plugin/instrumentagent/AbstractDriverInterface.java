@@ -17,8 +17,6 @@ public abstract class AbstractDriverInterface extends Observable {
 
     protected abstract String _sendCommand(String command);
 
-    protected abstract void eventLoop();
-
     protected abstract void connect();
 
     protected abstract void shutdown();
