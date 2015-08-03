@@ -21,7 +21,7 @@ public class SampleAccumulator implements Runnable {
     private Map<String, List<DataParticleJson>> particleMap = new HashMap<>();
     private long PUBLISH_INTERVAL = 5000;
 
-    @EndpointInject(uri = "direct-vm:generate")
+    @EndpointInject(uri = "direct-vm:generate?timeout=720000")
     protected ProducerTemplate producer;
 
     public synchronized void process(Map<String, Object> particle, String sensor) throws Exception {
