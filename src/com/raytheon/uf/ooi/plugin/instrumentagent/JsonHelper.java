@@ -1,12 +1,14 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
 public class JsonHelper {
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -16,10 +18,9 @@ public class JsonHelper {
     };
 
     static {
-        // TODO - this is needed to handle NaN, but not present in jackson 1.7.3
-        // mapper.configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
-        // mapper.configure(JsonGenerator.Feature.QUOTE_NON_NUMERIC_NUMBERS,
-        // false);
+        mapper.configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
+        mapper.configure(JsonGenerator.Feature.QUOTE_NON_NUMERIC_NUMBERS,
+                false);
     }
 
     private JsonHelper() {

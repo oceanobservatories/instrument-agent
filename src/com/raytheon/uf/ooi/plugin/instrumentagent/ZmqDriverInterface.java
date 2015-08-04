@@ -13,40 +13,16 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 
 public class ZmqDriverInterface extends AbstractDriverInterface {
     private ZContext context;
-    private ZMQ.Socket eventSocket;
-    private boolean keepRunning = true;
-    private String eventUrl;
     private String commandUrl;
     private final int commandTimeout = 10000;
-    private final int eventTimeout = 1000;
 
-    public ZmqDriverInterface(String host, int commandPort, int eventPort) {
+    public ZmqDriverInterface(String host, int commandPort) {
         commandUrl = String.format("tcp://%s:%d", host, commandPort);
-        eventUrl = String.format("tcp://%s:%d", host, eventPort);
     }
 
     public void connect() {
         context = new ZContext();
         context.setLinger(0);
-
-        connectEvent();
-
-        Thread t = new Thread() {
-            public void run() {
-                eventLoop();
-            }
-        };
-
-        t.setName("Event Loop " + eventUrl);
-        t.start();
-    }
-
-    private void connectEvent() {
-        status.handle(Priority.INFO, "Connecting to event port: " + eventUrl);
-        eventSocket = context.createSocket(ZMQ.SUB);
-        eventSocket.connect(eventUrl);
-        eventSocket.subscribe(new byte[0]);
-        eventSocket.setLinger(0);
     }
 
     @Override
@@ -57,7 +33,6 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         commandSocket = context.createSocket(ZMQ.REQ);
         commandSocket.connect(commandUrl);
         commandSocket.setLinger(0);
-        
         commandSocket.send(command);
 
         // Get the response
@@ -84,34 +59,8 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         return reply;
     }
 
-    protected void eventLoop() {
-        while (keepRunning) {
-            try {
-                PollItem items[] = { new PollItem(eventSocket, Poller.POLLIN) };
-                ZMQ.poll(items, eventTimeout);
-
-                String reply = null;
-                if (items[0].isReadable()) {
-                    reply = eventSocket.recvStr();
-                    status.handle(Priority.DEBUG, "ZMQ received: " + reply);
-                }
-                if (reply != null) {
-                    try {
-                        setChanged();
-                        notifyObservers(reply);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        status.handle(Priority.ERROR, ("Exception notifying observers: " + e.getMessage()));
-                    }
-                }
-            } catch (Exception e) {
-                status.handle(Priority.ERROR, "Exception in event loop: " + e);
-            }
-        }
-    }
 
     public void shutdown() {
-        keepRunning = false;
         if (context != null) {
             status.handle(Priority.INFO, "Closing ZMQ context");
             for (ZMQ.Socket socket : context.getSockets()) {
@@ -119,6 +68,7 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
                 socket.close();
             }
         }
+        context.close();
     }
 
 }

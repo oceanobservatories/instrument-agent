@@ -12,10 +12,8 @@
         http://cxf.apache.org/jaxrs 
         http://cxf.apache.org/schemas/jaxrs.xsd">
         
-    <bean id="sampleAccumulator" class="com.raytheon.uf.ooi.plugin.instrumentagent.SampleAccumulator" />
     <bean id="agentWeb" class="com.raytheon.uf.ooi.plugin.instrumentagent.InstrumentAgentWebImpl" depends-on="ooiConfiguration">
     	<constructor-arg name="basePath" value="ooi/instruments/agent-web/app" />
-    	<constructor-arg name="accumulator" ref="sampleAccumulator" />
     </bean>
     	    
     <jaxrs:server id="agentWebClientSubscriptionEndpoint" address="$ooi{ooi.web.agent.address}">
