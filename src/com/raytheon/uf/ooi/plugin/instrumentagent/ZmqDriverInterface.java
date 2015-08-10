@@ -14,10 +14,13 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 public class ZmqDriverInterface extends AbstractDriverInterface {
     private ZContext context;
     private String commandUrl;
-    private final int commandTimeout = 10000;
+    private int port;
+    private String host;
 
-    public ZmqDriverInterface(String host, int commandPort) {
-        commandUrl = String.format("tcp://%s:%d", host, commandPort);
+    public ZmqDriverInterface(String host, int port) {
+        this.host = host;
+        this.port = port;
+        buildCommandUrl();
     }
 
     public void connect() {
@@ -26,8 +29,9 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
     }
 
     @Override
-    protected synchronized String _sendCommand(String command) {
-        status.handle(Priority.INFO, "Sending command: " + command);
+    protected String _sendCommand(String command, int timeout) {
+        status.handle(Priority.INFO,
+                "Sending command: " + command + " timeout: " + timeout);
         // Send the command
         ZMQ.Socket commandSocket;
         commandSocket = context.createSocket(ZMQ.REQ);
@@ -37,7 +41,7 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
 
         // Get the response
         PollItem items[] = { new PollItem(commandSocket, Poller.POLLIN) };
-        int rc = ZMQ.poll(items, commandTimeout);
+        int rc = ZMQ.poll(items, timeout);
 
         if (rc == -1)
             // INTERRUPTED
@@ -59,7 +63,6 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         return reply;
     }
 
-
     public void shutdown() {
         if (context != null) {
             status.handle(Priority.INFO, "Closing ZMQ context");
@@ -71,4 +74,29 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         context.close();
     }
 
+    @Override
+    public int getPort() {
+        return port;
+    }
+
+    @Override
+    public void setPort(int port) {
+        this.port = port;
+        buildCommandUrl();
+    }
+
+    @Override
+    public String getHost() {
+        return host;
+    }
+
+    @Override
+    public void setHost(String host) {
+        this.host = host;
+        buildCommandUrl();
+    }
+
+    public void buildCommandUrl() {
+        commandUrl = String.format("tcp://%s:%d", host, port);
+    }
 }
