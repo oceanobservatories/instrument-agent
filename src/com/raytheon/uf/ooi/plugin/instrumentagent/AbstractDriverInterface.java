@@ -1,7 +1,10 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Observable;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -20,6 +23,14 @@ public abstract class AbstractDriverInterface extends Observable {
     protected abstract void connect();
 
     protected abstract void shutdown();
+
+    protected abstract void setHost(String host);
+
+    protected abstract String getHost();
+
+    protected abstract void setPort(int port);
+
+    protected abstract int getPort();
 
     protected void handleException(List<?> exception) {
         // TODO - alert user

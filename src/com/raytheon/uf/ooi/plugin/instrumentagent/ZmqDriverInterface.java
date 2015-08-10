@@ -14,10 +14,14 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 public class ZmqDriverInterface extends AbstractDriverInterface {
     private ZContext context;
     private String commandUrl;
+    private int port;
+    private String host;
     private final int commandTimeout = 10000;
 
-    public ZmqDriverInterface(String host, int commandPort) {
-        commandUrl = String.format("tcp://%s:%d", host, commandPort);
+    public ZmqDriverInterface(String host, int port) {
+        this.host = host;
+        this.port = port;
+        buildCommandUrl();
     }
 
     public void connect() {
@@ -71,4 +75,29 @@ public class ZmqDriverInterface extends AbstractDriverInterface {
         context.close();
     }
 
+    @Override
+    public int getPort() {
+        return port;
+    }
+
+    @Override
+    public void setPort(int port) {
+        this.port = port;
+        buildCommandUrl();
+    }
+
+    @Override
+    public String getHost() {
+        return host;
+    }
+
+    @Override
+    public void setHost(String host) {
+        this.host = host;
+        buildCommandUrl();
+    }
+
+    public void buildCommandUrl() {
+        commandUrl = String.format("tcp://%s:%d", host, port);
+    }
 }
