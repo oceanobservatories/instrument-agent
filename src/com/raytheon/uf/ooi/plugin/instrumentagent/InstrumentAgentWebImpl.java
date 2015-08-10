@@ -7,6 +7,8 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -49,13 +51,22 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
     }
 
     @Override
-    public Response listAgents() {
+    public Response listAgents(boolean verbose) {
         log.handle(Priority.INFO, "listAgents");
         String json;
         try {
             Collection<String> agents = discovery.getAgents();
             if (agents != null)
-                json = JsonHelper.toJson(discovery.getAgents().toArray());
+                if (verbose) {
+                    Map<String, Map<String, String>> map = new HashMap<>();
+                    for (String refdes : agents) {
+                        map.put(refdes,
+                                discovery.getAgent(refdes).getInterfaceMap());
+                    }
+                    json = JsonHelper.toJson(map);
+                } else {
+                    json = JsonHelper.toJson(agents);
+                }
             else
                 json = "\"No instruments found!\"";
         } catch (IOException e) {

@@ -36,7 +36,7 @@ public interface IAgentWebInterface {
     @GET
     @Path("api")
     @Produces({ MediaType.APPLICATION_JSON })
-    public Response listAgents();
+    public Response listAgents(@QueryParam("verbose") boolean verbose);
 
     @GET
     @Path("api/{id}")
@@ -75,14 +75,14 @@ public interface IAgentWebInterface {
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public void connect(@Suspended final AsyncResponse asyncResponse, @PathParam("id") String id,
-            @DefaultValue("60000") @FormParam("timeout") int timeout);
+            @DefaultValue("2000") @FormParam("timeout") int timeout);
 
     @POST
     @Path("api/{id}/disconnect")
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public void disconnect(@Suspended final AsyncResponse asyncResponse, @PathParam("id") String id,
-            @DefaultValue("60000") @FormParam("timeout") int timeout);
+            @DefaultValue("2000") @FormParam("timeout") int timeout);
 
     @POST
     @Path("api/{id}/discover")
@@ -130,7 +130,7 @@ public interface IAgentWebInterface {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public void execute(@Suspended final AsyncResponse asyncResponse, @PathParam("id") String id,
             @FormParam("command") String resource, @FormParam("kwargs") String kwargs,
-            @DefaultValue("60000") @FormParam("timeout") int timeout);
+            @DefaultValue("90000") @FormParam("timeout") int timeout);
 
     @GET
     @Path("app")

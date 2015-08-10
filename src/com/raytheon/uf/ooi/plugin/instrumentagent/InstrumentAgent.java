@@ -1,5 +1,8 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -15,13 +18,14 @@ public class InstrumentAgent {
     }
 
     protected String sendCommand(String command, String args, String kwargs, int timeout) {
-        String reply = driverInterface.sendCommand(command, args, kwargs);
+        String reply = driverInterface.sendCommand(command, args, kwargs,
+                timeout);
         status.handle(Priority.INFO, "Received reply from InstrumentDriver: " + reply);
         return reply;
     }
 
     protected String getOverallState() {
-        return sendCommand("overall_state", "[]", "{}", 0);
+        return sendCommand("overall_state", "[]", "{}", 2000);
     }
 
     protected String sendCommand(String command, int timeout) {
@@ -90,6 +94,13 @@ public class InstrumentAgent {
 
     public void setDriverInterface(AbstractDriverInterface driverInterface) {
         this.driverInterface = driverInterface;
+    }
+
+    public Map<String, String> getInterfaceMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put("host", driverInterface.getHost());
+        map.put("port", Integer.toString(driverInterface.getPort()));
+        return map;
     }
 
 }
