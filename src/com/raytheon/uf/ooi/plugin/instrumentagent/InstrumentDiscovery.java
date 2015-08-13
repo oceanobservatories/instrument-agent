@@ -18,7 +18,7 @@ public class InstrumentDiscovery {
     private final IUFStatusHandler log = UFStatus.getHandler(this.getClass());
     private Map<String, InstrumentAgent> agentMap = new HashMap<>();
     private static String serviceName = "instrument_driver";
-    private static final int sleepyTime = 5000;
+    private static final int intervalSeconds = 30;
     
     public InstrumentDiscovery() {
         Thread t = new Thread() {
@@ -37,7 +37,7 @@ public class InstrumentDiscovery {
     private synchronized long findDrivers(long index) {
         try {
             ConsulClient client = new ConsulClient("localhost");
-            QueryParams qp = new QueryParams(5, index);
+            QueryParams qp = new QueryParams(intervalSeconds, index);
             Response<List<HealthService>> resp = client
                     .getHealthServices(serviceName, false, qp);
             List<HealthService> services = resp.getValue();
@@ -49,11 +49,15 @@ public class InstrumentDiscovery {
             return index;
 
         } catch (Exception e) {
-            log.error("Exception in findDrivers: ", e);
+            // not logging stacktrace in the short term
+            // as not all users will have Consul installed
+            // and excessive logging from this will make other
+            // issues harder to identify
+            log.error("Exception connecting to consul");
             try {
                 // Sleep briefly to prevent runaway should there be a problem
                 // with Consul
-                Thread.sleep(sleepyTime);
+                Thread.sleep(intervalSeconds * 1000);
             } catch (InterruptedException ignore) {
             }
             return 0L;
