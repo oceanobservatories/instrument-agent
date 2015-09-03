@@ -43,6 +43,13 @@ public class Constants {
     public final static String DRIVER_ASYNC_FUTURE 		= "DRIVER_ASYNC_EVENT_FUTURE";
 	public final static String DRIVER_BUSY 				= "DRIVER_BUSY_EVENT";
     public final static String DRIVER_EXCEPTION 		= "DRIVER_EXCEPTION_EVENT";
+    
+    //Provenance Keys
+    public final static String REFERENCE_DESIGNATOR     = "refdes";
+    public final static String DRIVER_MODULE = "driver_module";
+    public final static String DRIVER_CLASS = "driver_class";
+    public final static String DRIVER_VERSION = "driver_version";
+    public final static String DRIVER_HOST = "driver_host";
 
     // Driver Streams
     public static final String STREAM_NAME              = "stream_name";
