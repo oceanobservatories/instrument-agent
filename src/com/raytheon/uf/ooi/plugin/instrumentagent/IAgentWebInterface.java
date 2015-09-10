@@ -129,8 +129,8 @@ public interface IAgentWebInterface {
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public void execute(@Suspended final AsyncResponse asyncResponse, @PathParam("id") String id,
-            @FormParam("command") String resource, @FormParam("kwargs") String kwargs,
-            @DefaultValue("90000") @FormParam("timeout") int timeout);
+			@FormParam("details") String details, @FormParam("command") String resource,
+			@FormParam("kwargs") String kwargs, @DefaultValue("90000") @FormParam("timeout") int timeout);
 
     @GET
     @Path("app")
@@ -139,5 +139,19 @@ public interface IAgentWebInterface {
     @GET
     @Path("app/{path:.*}")
     public Response getStatic(@PathParam("path") String path);
+    
+    @POST
+    @Path("api/event")
+    public Response processEvent(String event);
+    
+    @POST
+    @Path("api/lock")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public void sharedLockRequest(@Suspended final AsyncResponse asyncResponse, String requestInfo);
+    
+    @POST
+    @Path("api/getlock")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public void getSharedLock(@Suspended final AsyncResponse asyncResponse, String lockInfo);
 
 }
