@@ -128,9 +128,13 @@ public interface IAgentWebInterface {
     @Path("api/{id}/execute")
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public void execute(@Suspended final AsyncResponse asyncResponse, @PathParam("id") String id,
-			@FormParam("details") String details, @FormParam("command") String resource,
-			@FormParam("kwargs") String kwargs, @DefaultValue("90000") @FormParam("timeout") int timeout);
+    public void execute(@Suspended final AsyncResponse asyncResponse,
+            @PathParam("id") String id,
+            @FormParam("details") String details,
+            @FormParam("command") String resource,
+            @FormParam("kwargs") String kwargs,
+            @FormParam("key") String key,
+            @DefaultValue("90000") @FormParam("timeout") int timeout);
 
     @GET
     @Path("app")
@@ -145,13 +149,22 @@ public interface IAgentWebInterface {
     public Response processEvent(String event);
     
     @POST
-    @Path("api/lock")
+    @Path("api/{id}/lock")
     @Produces({ MediaType.APPLICATION_JSON })
-    public void sharedLockRequest(@Suspended final AsyncResponse asyncResponse, String requestInfo);
-    
+    public void lockInstrument(@Suspended final AsyncResponse asyncResponse,
+            @PathParam("id") final String id,
+            @QueryParam("key") final String key);
+
     @POST
-    @Path("api/getlock")
+    @Path("api/{id}/unlock")
     @Produces({ MediaType.APPLICATION_JSON })
-    public void getSharedLock(@Suspended final AsyncResponse asyncResponse, String lockInfo);
+    public void unlockInstrument(@Suspended final AsyncResponse asyncResponse,
+            @PathParam("id") final String id);
+
+    @GET
+    @Path("api/{id}/lock")
+    @Produces({ MediaType.APPLICATION_JSON })
+    public void getLockStatus(@Suspended final AsyncResponse asyncResponse,
+            @PathParam("id") final String id);
 
 }

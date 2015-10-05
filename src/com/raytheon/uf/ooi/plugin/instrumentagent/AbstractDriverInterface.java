@@ -1,6 +1,5 @@
 package com.raytheon.uf.ooi.plugin.instrumentagent;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,12 +53,6 @@ public abstract class AbstractDriverInterface extends Observable {
         Map<String, Object> map = new HashMap<>();
         map.put("cmd", command);
         map.put("reply", "FAIL: " + e);
-        try {
-            return JsonHelper.toJson(map);
-        } catch (IOException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-            return "Exception building failure message: " + e1;
-        }
+        return JsonHelper.toJson(map);
     }
 }
