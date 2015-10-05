@@ -19,14 +19,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import org.apache.camel.EndpointInject;
-import org.apache.camel.ProducerTemplate;
-import org.springframework.core.env.SystemEnvironmentPropertySource;
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.raytheon.uf.common.dataquery.requests.SharedLockRequest;
-import com.raytheon.uf.common.dataquery.requests.SharedLockRequest.RequestType;
-import com.raytheon.uf.common.dataquery.responses.SharedLockResponse;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -35,15 +28,7 @@ import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.edex.database.cluster.ClusterLockUtils;
-import com.raytheon.uf.edex.database.cluster.ClusterTask;
-import com.raytheon.uf.edex.database.cluster.ClusterTaskPK;
-import com.raytheon.uf.edex.database.handlers.SharedLockRequestHandler;
 import com.raytheon.uf.edex.ooi.alertalarm.AlertAlarmNotifier;
-import com.raytheon.uf.edex.ooi.instrument.events.Helper;
-
-
-
 
 @Path("/instrument")
 public class InstrumentAgentWebImpl implements IAgentWebInterface {
@@ -70,28 +55,21 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
 
     @Override
     public Response listAgents(boolean verbose) {
-        log.handle(Priority.INFO, "listAgents");
+        log.handle(Priority.DEBUG, "listAgents");
         String json;
-        try {
-            Collection<String> agents = discovery.getAgents();
-            if (agents != null)
-                if (verbose) {
-                    Map<String, Map<String, String>> map = new HashMap<>();
-                    for (String refdes : agents) {
-                        map.put(refdes,
-                                discovery.getAgent(refdes).getInterfaceMap());
-                    }
-                    json = JsonHelper.toJson(map);
-                } else {
-                    json = JsonHelper.toJson(agents);
-                }
-            else
-                json = "\"No instruments found!\"";
-        } catch (IOException e) {
-            json = "\"error encoding agent List: " + e.getMessage() + "\"";
-            log.error("error encoding agent List: ", e);
-            e.printStackTrace();
+
+        Collection<String> agents = discovery.getAgents();
+
+        if (verbose) {
+            Map<String, Map<String, String>> map = new HashMap<>();
+            for (String refdes : agents) {
+                map.put(refdes, discovery.getAgent(refdes).getInterfaceMap());
+            }
+            json = JsonHelper.toJson(map);
+        } else {
+            json = JsonHelper.toJson(agents);
         }
+
         return Response.ok(json).build();
     }
 
@@ -303,7 +281,8 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
 
     @Override
     public void execute(final AsyncResponse asyncResponse, final String id, final String details, 
-            final String command, String kwargs, final int timeout) {
+ final String command, String kwargs,
+            final String key, final int timeout) {
         final InstrumentAgent thisAgent = discovery.getAgent(id);
 
         if (thisAgent != null) {
@@ -313,29 +292,24 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        ClusterTask ct = ClusterLockUtils.lookupLock(id, details);
-                        if (ct != null) {
-	                        ClusterTaskPK id = ct.getId();
-                            log.handle(Priority.INFO, "ID name = " + id.getName() + " Details = " + id.getDetails() + " locked = " + ct.isRunning());
-	                		
-                            // Execute the command if the instrument is not locked
-                            if (!ct.isRunning()) {
-                                String reply = thisAgent.execute(command, myKwargs, timeout);
-                                asyncResponse.resume(Response.ok(reply).type(MediaType.APPLICATION_JSON).build());
-	                			 
-                            } else {
-                                asyncResponse.resume(Response.ok("Can't execute " + command + ". ID = " + id.getName() + " is locked", MediaType.APPLICATION_JSON).build());
-	                			 
-                            }
-                        } else {
-                            log.handle(Priority.INFO, "Error processing lock lookup for cluster task [" + id + "/" + details + "]");
-                            asyncResponse.resume(Response.ok("Error processing lock lookup for cluster task [" + id + "/" + details + "]", MediaType.APPLICATION_JSON).build());
-                        }
-                    } catch (Exception e) {
-                         log.error("Error Processing lock lookup for cluster task [" + id + "/" + details + "]", e);
-                         asyncResponse.resume(Response.ok("Error Processing lock lookup for cluster task [" + id + "/" + details + "]", MediaType.APPLICATION_JSON).build());
-                    }              	
+
+                    String locker = InstrumentAgentLock.get(id);
+                    if (locker == "" || locker == key) {
+                        String reply = thisAgent.execute(command, myKwargs,
+                                timeout);
+                        asyncResponse.resume(Response.ok(reply)
+                                .type(MediaType.APPLICATION_JSON).build());
+
+                    } else {
+                        String msg = "Can't execute " + command + ". ID = " + id
+                                + " is locked";
+                        asyncResponse
+                                .resume(Response
+                                        .ok(JsonHelper.toJson(msg),
+                                                MediaType.APPLICATION_JSON)
+                                        .build());
+
+                    }
                 }
             });
         } else {
@@ -373,153 +347,106 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
 
     /**
      * Process events from OMS Server
-     * @param event HTTP POST JSON list. The list contains dictionaries with each dictionary being one event.
-     *                          
-     */
-    @Override
-	public Response processEvent(String event) {
-    	
-    	AlertAlarmNotifier aaNotifier = AlertAlarmNotifier.getInstance();
-    	
-    	try {
-    		List<Map<String, Object>> eventMapList = Helper.toMapList(event);
-			
-    		if (eventMapList != null) {		
-    			aaNotifier = AlertAlarmNotifier.getInstance();
-    			for ( Map<String, Object> eventMap : eventMapList) {	
-					
-    				log.handle(Priority.DEBUG, "event Map = " + eventMap.toString());
-					aaNotifier.notifyOmsUser(eventMap);	
-				}			
-			} else {
-				log.handle(Priority.ERROR, "Expected OMS Events JSON dictionary list as input to process event: " + event);		
-			}	
-	    } catch (IOException e) {
-		    log.error("Error processing OMS Events", e);
-	    }
-    	return Response.status(Status.ACCEPTED).build();
-	}
-    
-    
-    /**
-     * Request to lock/unlock a sensor
-     * @param asyncResponse Asynchronous response
-     * @param requestInfo JSON string contains reference designator, requester and request type information
+     * 
+     * @param event
+     *            HTTP POST JSON list. The list contains dictionaries with each
+     *            dictionary being one event.
      * 
      */
     @Override
-    public void sharedLockRequest(final AsyncResponse asyncResponse, String requestInfo) {
-        String refDesignator = "";
-  	    String requester = "";
-  	    final String requestType;
-  	    final String LOCK_REQUEST = "lock";
-  	    final SharedLockRequest request;
-  	    final SharedLockRequestHandler requestHandler;
-  	   	
-	    try {
-	        request = new SharedLockRequest();
-	  	    requestHandler = new SharedLockRequestHandler();
-				
-	  	    Map<String, Object> requestInfoMap = Helper.toMap(requestInfo);
-	  	    if (requestInfoMap != null) {
-		        log.handle(Priority.INFO, "Request Info Map = " + requestInfoMap.toString());
-		        refDesignator = (String) requestInfoMap.get("ref_desig");
-		        requester = (String) requestInfoMap.get("requester");
-		        requestType = (String) requestInfoMap.get("request_type");
-		        request.setName(refDesignator);
-		        request.setDetails(requester);
-		    		
-		        // Set request type based on the request (lock or unlock)
-		        if (requestType.equals(LOCK_REQUEST)) {
-		            request.setRequestType(RequestType.WRITER_LOCK);
-		        } else {
-		            request.setRequestType(RequestType.WRITER_UNLOCK);	
-		        }
-		        
-		        executor.execute(new Runnable() {
-	                @Override
-	                public void run() {
-	                	 //SharedLockResponse response;
-	                     try {
-	                    	 final SharedLockResponse response = requestHandler.handleRequest(request);
-		     		         log.handle(Priority.INFO, "response = " + response.toString());
-		     		         if (response.isSucessful()) {
-		    	  		        log.handle(Priority.INFO, requestType + " was successfull");
-		    	  		     } else {
-		    	  		        log.handle(Priority.INFO, requestType + " was not successfull");
-		    	  		     }
-		                     String responseString = Helper.toJson(response);
-		                     asyncResponse.resume(Response.ok(responseString, MediaType.APPLICATION_JSON).build());
-		                     
-	                     }  catch (Exception e) {
-	                    	 log.error("handleRequest Exception", e);
-	                    	 asyncResponse.resume(Response.ok("handleRequest Exception", MediaType.APPLICATION_JSON).build());
-	                     }
-	                }
-		        });
-	    
-	  	    } else {
-			    log.handle(Priority.INFO, "Request Info Map is null");
-				asyncResponse.resume(Response.ok("Request Info Map is null", MediaType.APPLICATION_JSON).build());
-		    }
-		    	
-	    } catch (Exception e) {
-	        log.error("sharedLockRequest Exception", e);
-	        asyncResponse.resume(Response.ok("sharedLockRequest Exception", MediaType.APPLICATION_JSON).build());
-	    }
-    }
-    
-    /**
-     * Get a shared lock from Postgres database 
-     * @param asyncReponse Asynchronous response
-     * @param lockInfo JSON String contains reference designator and lock owner information
-     */
-    @Override
-    public void getSharedLock(final AsyncResponse asyncResponse, String lockInfo) {
-    	final String refDesignator = "ref_desig";
-    	final String lockOwner = "lock_owner";
-    	log.handle(Priority.INFO, "getSharedLock executes...");
-    	
-    	try {
-	    	Map<String, Object> lockInfoMap = Helper.toMap(lockInfo);
-			if (lockInfoMap != null) {
-	    		log.handle(Priority.INFO, "Lock Info Map = " + lockInfoMap.toString());
-	    		final String name = (String) lockInfoMap.get(refDesignator);
-	    		final String details = (String) lockInfoMap.get(lockOwner);
-	    		if (name != null && details != null) {
-		    		executor.execute(new Runnable() {
-		                 @Override
-		                 public void run() {
-		                     try {
-			                     ClusterTask ct = ClusterLockUtils.lookupLock(name, details);
-			                     if (ct != null) {
-			                		 ClusterTaskPK id = ct.getId();
-			     		    		 log.handle(Priority.INFO, "ID name = " + id.getName() + " Details = " + id.getDetails() + " Running = " + ct.isRunning());
-			                		 String ctString = Helper.toJson(ct);
-			                         asyncResponse.resume(Response.ok(ctString).type(MediaType.APPLICATION_JSON).build());
-			                	 } else {
-			                		 log.handle(Priority.INFO, "Lock with ID name = " + name + " and details = " + details + " was not found");
-			                		 asyncResponse.resume(Response.ok("Lock with ID name = " + name + " and details = " + details + " was not found", MediaType.APPLICATION_JSON).build());
-			                	 }
-		                     } catch (IOException e) {
-		                    	 log.error("Error in converting requested Lock info to JSON ", e);
-		                    	 asyncResponse.resume(Response.ok("Error in converting requested Lock info to JSON ", MediaType.APPLICATION_JSON).build());
-		                     }
-		                 }
-		             });
-	    		} else {
-	    			log.error("reference designator or lock owner input to getSharedLock is invalid");
-	    		}
-			}
-    	} catch (Exception e) {
-    		log.error("Invalid requested lock information: " + lockInfo, e);
-    		asyncResponse.resume(Response.ok(" INvalid requested lock information " + lockInfo, MediaType.APPLICATION_JSON).build());
-    	}    
-    }
-    
+    public Response processEvent(String event) {
 
-	private Response agentNotFound() {
-        // TODO
+        AlertAlarmNotifier aaNotifier = AlertAlarmNotifier.getInstance();
+
+        try {
+            List<Map<String, Object>> eventMapList = JsonHelper
+                    .toMapList(event);
+
+            if (eventMapList != null) {
+                aaNotifier = AlertAlarmNotifier.getInstance();
+                for (Map<String, Object> eventMap : eventMapList) {
+
+                    log.handle(Priority.DEBUG,
+                            "event Map = " + eventMap.toString());
+                    aaNotifier.notifyOmsUser(eventMap);
+                }
+            } else {
+                log.handle(Priority.ERROR,
+                        "Expected OMS Events JSON dictionary list as input to process event: "
+                                + event);
+            }
+        } catch (IOException e) {
+            log.error("Error processing OMS Events", e);
+        }
+        return Response.status(Status.ACCEPTED).build();
+    }
+    
+    private Response agentNotFound() {
         return Response.status(404).build();
+    }
+
+    @Override
+    public void lockInstrument(final AsyncResponse asyncResponse,
+            final String id,
+            final String key) {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                Map<String, Object> response = new HashMap<>();
+                response.put("id", id);
+                response.put("key", key);
+                response.put("locked-by", key);
+                if (InstrumentAgentLock.lock(id, key)) {
+                    log.info("Locked instrument: " + id + " with key: " + key);
+                    asyncResponse.resume(Response.ok()
+                            .entity(JsonHelper.toJson(response))
+                            .type(MediaType.APPLICATION_JSON_TYPE).build());
+                } else {
+                    // Lock already held
+                    String locker = InstrumentAgentLock.get(id);
+                    String msg = "Failed to lock instrument: " + id
+                            + " with key: " + key;
+                    response.put("locked-by", locker);
+                    response.put("message", msg);
+                    log.warn(msg);
+                    asyncResponse.resume(Response.status(409)
+                            .entity(JsonHelper.toJson(response))
+                            .type(MediaType.APPLICATION_JSON_TYPE).build());
+                }
+            }
+        });
+    }
+
+    @Override
+    public void unlockInstrument(final AsyncResponse asyncResponse,
+            final String id) {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (InstrumentAgentLock.unlock(id)) {
+                    asyncResponse.resume(Response.ok().build());
+                    log.info("Unlocked instrument: " + id);
+                } else {
+                    String msg = "Failed to unlock instrument: " + id;
+                    log.warn(msg);
+                    asyncResponse.resume(Response.serverError()
+                            .entity(JsonHelper.toJson(msg))
+                            .type(MediaType.APPLICATION_JSON_TYPE).build());
+                }
+            }
+        });
+    }
+
+    @Override
+    public void getLockStatus(final AsyncResponse asyncResponse, final String id) {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                String locker = InstrumentAgentLock.get(id);
+                asyncResponse
+                        .resume(Response.ok().entity(JsonHelper.toJson(locker))
+                                .type(MediaType.APPLICATION_JSON_TYPE).build());
+            }
+        });
     }
 }

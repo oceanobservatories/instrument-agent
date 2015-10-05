@@ -10,11 +10,18 @@ import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+
 public class JsonHelper {
+    private static final IUFStatusHandler log = UFStatus
+            .getHandler(JsonHelper.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     protected static final TypeReference<Map<String, Object>> mapType = new TypeReference<Map<String, Object>>() {
     };
     protected static final TypeReference<List<Object>> listType = new TypeReference<List<Object>>() {
+    };
+    protected static final TypeReference<List<Map<String, Object>>> mapListType = new TypeReference<List<Map<String, Object>>>() {
     };
 
     static {
@@ -26,8 +33,17 @@ public class JsonHelper {
     private JsonHelper() {
     }
 
-    public static String toJson(Object obj) throws IOException {
-        return mapper.writeValueAsString(obj);
+    public static String toJson(Object obj) {
+        try {
+            return mapper.writeValueAsString(obj);
+        } catch (IOException ignore) {
+            try {
+                return mapper.writeValueAsString(obj.toString());
+            } catch (IOException e) {
+                log.error("Unable to generate JSON response", e);
+                return "\"Failed to encode response as JSON; see log for details.\"";
+            }
+        }
     }
 
     public static Map<String, Object> toMap(String json) throws IOException {
@@ -38,6 +54,21 @@ public class JsonHelper {
         JsonNode node = mapper.readTree(json);
         if (node.isArray())
             return mapper.readValue(json, listType);
+        return null;
+    }
+
+    /**
+     * Converts Json list of dictionaries to list of Map
+     *
+     * @param json
+     * @return
+     * @throws IOException
+     */
+    public static List<Map<String, Object>> toMapList(String json)
+            throws IOException {
+        JsonNode node = mapper.readTree(json);
+        if (node.isArray())
+            return mapper.readValue(json, mapListType);
         return null;
     }
 
