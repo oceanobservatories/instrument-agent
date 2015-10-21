@@ -15,18 +15,19 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 /**
- * 
+ *
  * <pre>
- * 
+ *
  * SOFTWARE HISTORY
- * 
+ *
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 22, 2014            pcable     Initial creation
- * Aug 02, 2015            pcable     Implement Discovery
- * 
+ * Sep 22, 2014            pcable      Initial creation
+ * Aug 02, 2015            pcable      Implement Discovery
+ * Oct 21, 2015            pcable      Add shutdown endpoint
+ *
  * </pre>
- * 
+ *
  * @author pcable
  * @version 1.0
  */
@@ -135,6 +136,14 @@ public interface IAgentWebInterface {
             @FormParam("kwargs") String kwargs,
             @FormParam("key") String key,
             @DefaultValue("90000") @FormParam("timeout") int timeout);
+
+    @POST
+    @Path("api/{id}/shutdown")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public void shutdown(@Suspended final AsyncResponse asyncResponse,
+            @PathParam("id") String id,
+            @DefaultValue("600000") @FormParam("timeout") int timeout);
 
     @GET
     @Path("app")

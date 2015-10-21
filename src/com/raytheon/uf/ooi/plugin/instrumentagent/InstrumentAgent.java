@@ -7,6 +7,24 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 
+/**
+ *
+ * <pre>
+ *
+ * SOFTWARE HISTORY
+ *
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Sep 22, 2014            pcable      Initial creation
+ * Aug 02, 2015            pcable      Implement Discovery
+ * Oct 21, 2015            pcable      Add shutdown endpoint
+ *
+ * </pre>
+ *
+ * @author pcable
+ * @version 1.0
+ */
+
 public class InstrumentAgent {
     protected IUFStatusHandler status = UFStatus.getHandler(InstrumentAgent.class);
 
@@ -88,6 +106,10 @@ public class InstrumentAgent {
         return sendCommand(Constants.EXECUTE_RESOURCE, args, kwargs, timeout);
     }
 
+    public String shutdown(int timeout) {
+        return sendCommand(Constants.STOP_DRIVER, timeout);
+    }
+
     public AbstractDriverInterface getDriverInterface() {
         return driverInterface;
     }
@@ -102,5 +124,4 @@ public class InstrumentAgent {
         map.put("port", Integer.toString(driverInterface.getPort()));
         return map;
     }
-
 }

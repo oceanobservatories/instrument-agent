@@ -30,6 +30,24 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.ooi.alertalarm.AlertAlarmNotifier;
 
+/**
+ *
+ * <pre>
+ *
+ * SOFTWARE HISTORY
+ *
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Sep 22, 2014            pcable      Initial creation
+ * Aug 02, 2015            pcable      Implement Discovery
+ * Oct 21, 2015            pcable      Add shutdown endpoint
+ *
+ * </pre>
+ *
+ * @author pcable
+ * @version 1.0
+ */
+
 @Path("/instrument")
 public class InstrumentAgentWebImpl implements IAgentWebInterface {
     private final IUFStatusHandler log = UFStatus.getHandler(this.getClass());
@@ -446,5 +464,23 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
                                 .type(MediaType.APPLICATION_JSON_TYPE).build());
             }
         });
+    }
+
+    @Override
+    public void shutdown(final AsyncResponse asyncResponse, final String id,
+            final int timeout) {
+        final InstrumentAgent thisAgent = discovery.getAgent(id);
+        if (thisAgent != null) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    String reply = thisAgent.shutdown(timeout);
+                    asyncResponse.resume(Response.ok(reply)
+                            .type(MediaType.APPLICATION_JSON).build());
+                }
+            });
+        } else {
+            asyncResponse.resume(agentNotFound());
+        }
     }
 }
