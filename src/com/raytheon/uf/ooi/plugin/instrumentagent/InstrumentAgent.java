@@ -18,6 +18,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Sep 22, 2014            pcable      Initial creation
  * Aug 02, 2015            pcable      Implement Discovery
  * Oct 21, 2015            pcable      Add shutdown endpoint
+ * Jan 14, 2016 3310       pcable      Fix /ping and /resource
  *
  * </pre>
  *
@@ -55,7 +56,7 @@ public class InstrumentAgent {
     }
 
     public String ping(int timeout) {
-        return sendCommand(Constants.PING, "PONG", timeout);
+        return sendCommand(Constants.PING, "\"PONG\"", timeout);
     }
 
     public String initialize(String config, int timeout) {

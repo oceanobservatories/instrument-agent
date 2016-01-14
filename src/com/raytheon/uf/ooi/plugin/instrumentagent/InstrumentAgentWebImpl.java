@@ -41,6 +41,7 @@ import com.raytheon.uf.edex.ooi.alertalarm.AlertAlarmNotifier;
  * Sep 22, 2014            pcable      Initial creation
  * Aug 02, 2015            pcable      Implement Discovery
  * Oct 21, 2015            pcable      Add shutdown endpoint
+ * Jan 14, 2016 3310       pcable      Fix /ping and /resource
  *
  * </pre>
  *
@@ -265,7 +266,7 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
     @Override
     public void getResource(final AsyncResponse asyncResponse, final String id, String resource, final int timeout) {
         if (resource == null)
-            resource = "DRIVER_PARAMETER_ALL";
+            resource = "\"DRIVER_PARAMETER_ALL\"";
         final InstrumentAgent thisAgent = discovery.getAgent(id);
         if (thisAgent != null) {
             final String myResource = resource;
