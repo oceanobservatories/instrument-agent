@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -17,7 +16,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -28,7 +26,6 @@ import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.edex.ooi.alertalarm.AlertAlarmNotifier;
 
 /**
  *
@@ -42,6 +39,7 @@ import com.raytheon.uf.edex.ooi.alertalarm.AlertAlarmNotifier;
  * Aug 02, 2015            pcable      Implement Discovery
  * Oct 21, 2015            pcable      Add shutdown endpoint
  * Jan 14, 2016 3310       pcable      Fix /ping and /resource
+ * Apr 21, 2016            rgelinas    Removed processEvent. Processing handled by OmsEventProcessor.
  *
  * </pre>
  *
@@ -360,42 +358,6 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
             e.printStackTrace();
             return Response.noContent().build();
         }
-    }
-
-    /**
-     * Process events from OMS Server
-     * 
-     * @param event
-     *            HTTP POST JSON list. The list contains dictionaries with each
-     *            dictionary being one event.
-     * 
-     */
-    @Override
-    public Response processEvent(String event) {
-
-        AlertAlarmNotifier aaNotifier = AlertAlarmNotifier.getInstance();
-
-        try {
-            List<Map<String, Object>> eventMapList = JsonHelper
-                    .toMapList(event);
-
-            if (eventMapList != null) {
-                aaNotifier = AlertAlarmNotifier.getInstance();
-                for (Map<String, Object> eventMap : eventMapList) {
-
-                    log.handle(Priority.DEBUG,
-                            "event Map = " + eventMap.toString());
-                    aaNotifier.notifyOmsUser(eventMap);
-                }
-            } else {
-                log.handle(Priority.ERROR,
-                        "Expected OMS Events JSON dictionary list as input to process event: "
-                                + event);
-            }
-        } catch (IOException e) {
-            log.error("Error processing OMS Events", e);
-        }
-        return Response.status(Status.ACCEPTED).build();
     }
     
     private Response agentNotFound() {

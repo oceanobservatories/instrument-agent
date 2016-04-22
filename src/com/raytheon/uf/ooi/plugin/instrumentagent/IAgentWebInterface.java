@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
  * Sep 22, 2014            pcable      Initial creation
  * Aug 02, 2015            pcable      Implement Discovery
  * Oct 21, 2015            pcable      Add shutdown endpoint
+ * Apr 21, 2016            rgelinas    Removed processEvent. Processing handled by OmsEventProcessor.
  *
  * </pre>
  *
@@ -152,10 +153,6 @@ public interface IAgentWebInterface {
     @GET
     @Path("app/{path:.*}")
     public Response getStatic(@PathParam("path") String path);
-    
-    @POST
-    @Path("api/event")
-    public Response processEvent(String event);
     
     @POST
     @Path("api/{id}/lock")
