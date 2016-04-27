@@ -311,7 +311,7 @@ public class InstrumentAgentWebImpl implements IAgentWebInterface {
                 public void run() {
 
                     String locker = InstrumentAgentLock.get(id);
-                    if (locker == "" || locker == key) {
+                    if (locker.equals("") || locker.equals(key)) {
                         String reply = thisAgent.execute(command, myKwargs,
                                 timeout);
                         asyncResponse.resume(Response.ok(reply)
